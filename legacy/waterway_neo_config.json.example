@@ -1,0 +1,7 @@
+{
+  "host": "192.168.1.50",
+  "publish_key": "replace-with-your-publish-key",
+  "subscribe_key": "replace-with-your-subscribe-key",
+  "channel": "replace-with-your-controller-channel",
+  "time_zone": "America/Denver"
+}

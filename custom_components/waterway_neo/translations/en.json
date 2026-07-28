@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect a Waterway NEO controller",
+        "description": "The controller IP address is used locally. PubNub values are stored only in your Home Assistant config entry and are never exposed as entity attributes or diagnostics.",
+        "data": {
+          "name": "Device name",
+          "host": "Controller IP address or hostname",
+          "publish_key": "PubNub publish key",
+          "subscribe_key": "PubNub subscribe key",
+          "channel": "Controller channel",
+          "time_zone": "IANA time zone",
+          "scan_interval": "Polling interval",
+          "auto_sync_clock": "Automatically correct controller clock",
+          "clock_drift_threshold": "Clock drift threshold"
+        },
+        "data_description": {
+          "host": "Use a DHCP reservation so this address does not change.",
+          "time_zone": "For example: America/Denver",
+          "scan_interval": "Five minutes (300 seconds) is recommended.",
+          "clock_drift_threshold": "Automatic correction occurs when absolute drift exceeds this value."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to retrieve both local and cloud controller state. Verify the address, keys, channel, internet access, and time zone."
+    },
+    "abort": {
+      "already_configured": "This Waterway NEO controller is already configured."
+    }
+  }
+}

@@ -1,0 +1,51 @@
+# Replace waterway_neo with your actual climate entity ID before importing.
+input_boolean:
+  hot_tub_boost_active:
+    name: Hot Tub Boost Active
+
+input_datetime:
+  hot_tub_boost_end:
+    name: Hot Tub Boost End
+    has_date: true
+    has_time: true
+
+automation:
+  - alias: Hot Tub - Detect 104°F Boost
+    id: waterway_neo_detect_104_boost
+    triggers:
+      - trigger: numeric_state
+        entity_id: climate.waterway_neo
+        attribute: temperature
+        above: 103.5
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hot_tub_boost_active
+        state: "off"
+    actions:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.hot_tub_boost_active
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.hot_tub_boost_end
+        data:
+          datetime: "{{ (now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  - alias: Hot Tub - Return to 99°F After Boost
+    id: waterway_neo_return_to_setback
+    triggers:
+      - trigger: time
+        at: input_datetime.hot_tub_boost_end
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hot_tub_boost_active
+        state: "on"
+    actions:
+      - action: climate.set_temperature
+        target:
+          entity_id: climate.waterway_neo
+        data:
+          temperature: 99
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.hot_tub_boost_active

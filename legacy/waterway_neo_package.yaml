@@ -1,0 +1,151 @@
+# Legacy package. The HACS custom integration is the recommended installation.
+command_line:
+  - sensor:
+      name: Waterway NEO Controller
+      unique_id: waterway_neo_controller
+      command: python3 /config/waterway_neo.py status
+      scan_interval: 300
+      command_timeout: 15
+      value_template: "{{ value_json.status }}"
+      json_attributes:
+        - water_temperature
+        - target_temperature
+        - controller_time
+        - clock_drift_minutes
+        - raw_status
+        - other_status
+        - error
+
+shell_command:
+  waterway_neo_set_temperature: >-
+    python3 /config/waterway_neo.py set {{ temperature | int }}
+  waterway_neo_sync_time: python3 /config/waterway_neo.py sync-time
+
+template:
+  - binary_sensor:
+      - name: Waterway NEO Controller Online
+        unique_id: waterway_neo_controller_online
+        device_class: connectivity
+        state: "{{ is_state('sensor.waterway_neo_controller', 'online') }}"
+      - name: Waterway NEO Clock Synchronized
+        unique_id: waterway_neo_clock_synchronized
+        icon: mdi:clock-check-outline
+        availability: >-
+          {{ state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes') is not none }}
+        state: >-
+          {{ state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes')
+             | float(9999) | abs <= 5 }}
+    sensor:
+      - name: Waterway NEO Water Temperature
+        unique_id: waterway_neo_water_temperature
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: °F
+        state: "{{ state_attr('sensor.waterway_neo_controller', 'water_temperature') }}"
+      - name: Waterway NEO Target Temperature
+        unique_id: waterway_neo_target_temperature
+        device_class: temperature
+        unit_of_measurement: °F
+        state: "{{ state_attr('sensor.waterway_neo_controller', 'target_temperature') }}"
+      - name: Waterway NEO Controller Time
+        unique_id: waterway_neo_controller_time
+        device_class: timestamp
+        state: "{{ state_attr('sensor.waterway_neo_controller', 'controller_time') }}"
+      - name: Waterway NEO Clock Drift
+        unique_id: waterway_neo_clock_drift
+        unit_of_measurement: min
+        state_class: measurement
+        state: "{{ state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes') }}"
+
+input_boolean:
+  hot_tub_boost_active:
+    name: Hot Tub Boost Active
+    icon: mdi:timer-fire
+
+input_datetime:
+  hot_tub_boost_end:
+    name: Hot Tub Boost End
+    has_date: true
+    has_time: true
+
+script:
+  hot_tub_boost_8_hours:
+    alias: Hot Tub - Boost to 104°F for 8 Hours
+    mode: restart
+    sequence:
+      - action: shell_command.waterway_neo_set_temperature
+        data:
+          temperature: 104
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.hot_tub_boost_active
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.hot_tub_boost_end
+        data:
+          datetime: "{{ (now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') }}"
+  hot_tub_setback_now:
+    alias: Hot Tub - Set Back to 99°F Now
+    mode: restart
+    sequence:
+      - action: shell_command.waterway_neo_set_temperature
+        data:
+          temperature: 99
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.hot_tub_boost_active
+
+automation:
+  - id: waterway_neo_detect_104_boost
+    alias: Hot Tub - Detect 104°F Boost
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.waterway_neo_target_temperature
+        above: 103.5
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hot_tub_boost_active
+        state: "off"
+    actions:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.hot_tub_boost_active
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.hot_tub_boost_end
+        data:
+          datetime: "{{ (now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') }}"
+  - id: waterway_neo_boost_deadline
+    alias: Hot Tub - Return to 99°F After Boost
+    triggers:
+      - trigger: time
+        at: input_datetime.hot_tub_boost_end
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hot_tub_boost_active
+        state: "on"
+    actions:
+      - action: script.hot_tub_setback_now
+  - id: waterway_neo_clock_sync
+    alias: Hot Tub - Synchronize Controller Clock
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_clock_synchronized
+        to: "off"
+        for: "00:10:00"
+      - trigger: time_pattern
+        hours: /6
+        minutes: "17"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.waterway_neo_controller_online
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.waterway_neo_clock_synchronized
+        state: "off"
+    actions:
+      - action: shell_command.waterway_neo_sync_time
+      - delay: "00:00:05"
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.waterway_neo_controller

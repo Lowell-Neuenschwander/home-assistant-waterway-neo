@@ -1,0 +1,12 @@
+type: entities
+title: Hot Tub
+entities:
+  - climate.waterway_neo
+  - sensor.waterway_neo_water_temperature
+  - sensor.waterway_neo_target_temperature
+  - binary_sensor.waterway_neo_controller_connection
+  - binary_sensor.waterway_neo_cloud_connection
+  - sensor.waterway_neo_controller_time
+  - sensor.waterway_neo_clock_drift
+  - binary_sensor.waterway_neo_clock_synchronized
+  - button.waterway_neo_synchronize_clock
