@@ -18,6 +18,7 @@ and panel `P0.02`. Other firmware should be treated as untested until confirmed.
 
 - Local water-temperature and controller-connectivity monitoring
 - Native Home Assistant climate entity with an 80–104°F target range
+- Configurable high-temperature and freeze-risk problem sensors (110°F and 60°F defaults)
 - Target temperature, controller clock, clock drift, and cloud-health sensors
 - Manual clock synchronization button
 - Optional automatic clock correction using the configured IANA time zone
@@ -51,6 +52,8 @@ creating the config entry.
 | IANA time zone | For example, `America/Denver` |
 | Polling interval | 300 seconds is recommended |
 | Clock correction | Corrects drift greater than the selected threshold |
+| High-temperature threshold | Creates a problem entity at or above the measured temperature; default 110°F |
+| Freeze-risk threshold | Creates a problem entity at or below the measured temperature; default 60°F |
 
 The three PubNub values are not shown in the app UI. See
 [Credential discovery](docs/credential-discovery.md) before setup.
@@ -65,9 +68,28 @@ The three PubNub values are not shown in the app UI. See
 - `binary_sensor.<device>_controller_connection`
 - `binary_sensor.<device>_cloud_connection`
 - `binary_sensor.<device>_clock_synchronized`
+- `binary_sensor.<device>_high_temperature_warning`
+- `binary_sensor.<device>_freeze_risk_warning`
 - `button.<device>_synchronize_clock`
 
 Entity IDs are assigned by Home Assistant and may differ from these examples.
+
+The climate entity is the normal setpoint control. Add it to an Entities card,
+or use a Thermostat card for a prominent 80–104°F temperature control. See
+[`examples/dashboard.yaml`](examples/dashboard.yaml).
+
+## Temperature safety alerts
+
+The problem entities turn on at the configured measured-water thresholds. The
+defaults are 110°F for high temperature and 60°F for early freeze-risk warning.
+Use them as automation triggers for mobile, voice, or other notification
+services; a persistent-notification example is included in
+[`examples/automations.yaml`](examples/automations.yaml).
+
+The 110°F threshold is an emergency equipment-failure warning, not a safe-use
+limit. Public-health guidance says hot-tub water should not exceed 104°F. Verify
+the water with an independent thermometer before entry whenever a reading or
+controller behavior is abnormal.
 
 ## Eight-hour 104°F safeguard
 

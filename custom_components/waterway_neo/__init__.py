@@ -12,12 +12,16 @@ from .const import (
     CONF_AUTO_SYNC_CLOCK,
     CONF_CHANNEL,
     CONF_CLOCK_DRIFT_THRESHOLD,
+    CONF_FREEZE_RISK_THRESHOLD,
+    CONF_HIGH_TEMPERATURE_THRESHOLD,
     CONF_PUBLISH_KEY,
     CONF_SCAN_INTERVAL,
     CONF_SUBSCRIBE_KEY,
     CONF_TIME_ZONE,
     DEFAULT_AUTO_SYNC_CLOCK,
     DEFAULT_CLOCK_DRIFT_THRESHOLD,
+    DEFAULT_FREEZE_RISK_THRESHOLD,
+    DEFAULT_HIGH_TEMPERATURE_THRESHOLD,
     DEFAULT_SCAN_INTERVAL,
     PLATFORMS,
 )
@@ -43,6 +47,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         auto_sync_clock=entry.data.get(CONF_AUTO_SYNC_CLOCK, DEFAULT_AUTO_SYNC_CLOCK),
         clock_drift_threshold=entry.data.get(
             CONF_CLOCK_DRIFT_THRESHOLD, DEFAULT_CLOCK_DRIFT_THRESHOLD
+        ),
+        high_temperature_threshold=entry.data.get(
+            CONF_HIGH_TEMPERATURE_THRESHOLD, DEFAULT_HIGH_TEMPERATURE_THRESHOLD
+        ),
+        freeze_risk_threshold=entry.data.get(
+            CONF_FREEZE_RISK_THRESHOLD, DEFAULT_FREEZE_RISK_THRESHOLD
         ),
     )
     await coordinator.async_config_entry_first_refresh()

@@ -97,7 +97,8 @@ def build_set_temperature_command(temperature: int) -> str:
 def build_set_time_command(value: datetime) -> str:
     """Build the S6 command used by the Waterway app.
 
-    The controller uses Sunday=0 through Saturday=6 for the weekday field.
+    The weekday field follows the value emitted by the observed mobile app.
+    Tuesday=2 has been verified; other weekdays still need sanitized captures.
     Seconds are intentionally reset to zero, matching the official app.
     """
 

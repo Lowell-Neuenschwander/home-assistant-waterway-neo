@@ -25,12 +25,16 @@ from .const import (
     CONF_AUTO_SYNC_CLOCK,
     CONF_CHANNEL,
     CONF_CLOCK_DRIFT_THRESHOLD,
+    CONF_FREEZE_RISK_THRESHOLD,
+    CONF_HIGH_TEMPERATURE_THRESHOLD,
     CONF_PUBLISH_KEY,
     CONF_SCAN_INTERVAL,
     CONF_SUBSCRIBE_KEY,
     CONF_TIME_ZONE,
     DEFAULT_AUTO_SYNC_CLOCK,
     DEFAULT_CLOCK_DRIFT_THRESHOLD,
+    DEFAULT_FREEZE_RISK_THRESHOLD,
+    DEFAULT_HIGH_TEMPERATURE_THRESHOLD,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -112,6 +116,30 @@ class WaterwayNeoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         step=1,
                         mode=NumberSelectorMode.BOX,
                         unit_of_measurement="minutes",
+                    )
+                ),
+                vol.Required(
+                    CONF_HIGH_TEMPERATURE_THRESHOLD,
+                    default=DEFAULT_HIGH_TEMPERATURE_THRESHOLD,
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=104,
+                        max=120,
+                        step=1,
+                        mode=NumberSelectorMode.BOX,
+                        unit_of_measurement="°F",
+                    )
+                ),
+                vol.Required(
+                    CONF_FREEZE_RISK_THRESHOLD,
+                    default=DEFAULT_FREEZE_RISK_THRESHOLD,
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=32,
+                        max=80,
+                        step=1,
+                        mode=NumberSelectorMode.BOX,
+                        unit_of_measurement="°F",
                     )
                 ),
             }

@@ -22,6 +22,8 @@ load custom components.
 6. Run **Developer tools → YAML → Check configuration**, then restart Home
    Assistant.
 
-The package polls every five minutes, exposes temperature and clock entities,
-provides target/clock shell commands, and includes an optional 104°F eight-hour
-guard. Adjust entity IDs if they collide with existing helpers.
+The package polls every five minutes, exposes temperature, clock, and safety
+entities, provides an adjustable 80–104°F target helper, and includes an
+optional 104°F eight-hour guard. Its persistent safety notifications should be
+supplemented with your own mobile or voice notification actions. Adjust entity
+IDs if they collide with existing helpers.

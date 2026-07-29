@@ -25,6 +25,8 @@ async def async_setup_entry(
             WaterwayNeoOnlineBinarySensor(coordinator),
             WaterwayNeoCloudBinarySensor(coordinator),
             WaterwayNeoClockBinarySensor(coordinator),
+            WaterwayNeoHighTemperatureBinarySensor(coordinator),
+            WaterwayNeoFreezeRiskBinarySensor(coordinator),
         ]
     )
 
@@ -78,3 +80,63 @@ class WaterwayNeoClockBinarySensor(WaterwayNeoEntity, BinarySensorEntity):
     @property
     def available(self) -> bool:
         return super().available and self.coordinator.data.clock_drift_minutes is not None
+
+
+class WaterwayNeoHighTemperatureBinarySensor(WaterwayNeoEntity, BinarySensorEntity):
+    """Whether the measured water temperature is dangerously high."""
+
+    _attr_name = "High temperature warning"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_icon = "mdi:thermometer-alert"
+
+    def __init__(self, coordinator: WaterwayNeoCoordinator) -> None:
+        super().__init__(coordinator, "high_temperature_warning")
+
+    @property
+    def is_on(self) -> bool | None:
+        temperature = self.coordinator.data.water_temperature
+        if temperature is None:
+            return None
+        return temperature >= self.coordinator.high_temperature_threshold
+
+    @property
+    def available(self) -> bool:
+        return (
+            super().available
+            and self.coordinator.data.online
+            and self.coordinator.data.water_temperature is not None
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int]:
+        return {"threshold": self.coordinator.high_temperature_threshold}
+
+
+class WaterwayNeoFreezeRiskBinarySensor(WaterwayNeoEntity, BinarySensorEntity):
+    """Whether the measured water temperature indicates freeze-protection risk."""
+
+    _attr_name = "Freeze risk warning"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_icon = "mdi:snowflake-alert"
+
+    def __init__(self, coordinator: WaterwayNeoCoordinator) -> None:
+        super().__init__(coordinator, "freeze_risk_warning")
+
+    @property
+    def is_on(self) -> bool | None:
+        temperature = self.coordinator.data.water_temperature
+        if temperature is None:
+            return None
+        return temperature <= self.coordinator.freeze_risk_threshold
+
+    @property
+    def available(self) -> bool:
+        return (
+            super().available
+            and self.coordinator.data.online
+            and self.coordinator.data.water_temperature is not None
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int]:
+        return {"threshold": self.coordinator.freeze_risk_threshold}

@@ -27,6 +27,8 @@ class WaterwayNeoCoordinator(DataUpdateCoordinator[WaterwayNeoData]):
         scan_interval: int,
         auto_sync_clock: bool,
         clock_drift_threshold: int,
+        high_temperature_threshold: int,
+        freeze_risk_threshold: int,
     ) -> None:
         super().__init__(
             hass,
@@ -40,6 +42,8 @@ class WaterwayNeoCoordinator(DataUpdateCoordinator[WaterwayNeoData]):
         self.client = client
         self.auto_sync_clock = auto_sync_clock
         self.clock_drift_threshold = clock_drift_threshold
+        self.high_temperature_threshold = high_temperature_threshold
+        self.freeze_risk_threshold = freeze_risk_threshold
 
     async def _async_update_data(self) -> WaterwayNeoData:
         try:

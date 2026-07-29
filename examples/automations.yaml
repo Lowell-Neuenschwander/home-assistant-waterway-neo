@@ -49,3 +49,72 @@ automation:
       - action: input_boolean.turn_off
         target:
           entity_id: input_boolean.hot_tub_boost_active
+
+  - alias: Hot Tub - High Temperature Warning
+    id: waterway_neo_high_temperature_warning
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_high_temperature_warning
+        to: "on"
+      - trigger: time_pattern
+        minutes: "/15"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.waterway_neo_high_temperature_warning
+        state: "on"
+    actions:
+      - action: persistent_notification.create
+        data:
+          notification_id: waterway_neo_high_temperature_warning
+          title: Hot Tub High Temperature Warning
+          message: >-
+            Measured water temperature is
+            {{ states('sensor.waterway_neo_water_temperature') }}°F. Do not enter
+            the spa. Verify with an independent thermometer and shut down or
+            service the heater if the reading is confirmed.
+      # Add your mobile or voice notify action here.
+
+  - alias: Hot Tub - Freeze Risk Warning
+    id: waterway_neo_freeze_risk_warning
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_freeze_risk_warning
+        to: "on"
+      - trigger: time_pattern
+        hours: "/1"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.waterway_neo_freeze_risk_warning
+        state: "on"
+    actions:
+      - action: persistent_notification.create
+        data:
+          notification_id: waterway_neo_freeze_risk_warning
+          title: Hot Tub Freeze-Risk Warning
+          message: >-
+            Measured water temperature is
+            {{ states('sensor.waterway_neo_water_temperature') }}°F. Inspect the
+            heater, circulation, and power promptly to protect the plumbing.
+      # Add your mobile or voice notify action here.
+
+  - alias: Hot Tub - Clear Temperature Warnings
+    id: waterway_neo_clear_temperature_warnings
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_high_temperature_warning
+        to: "off"
+        id: high
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_freeze_risk_warning
+        to: "off"
+        id: freeze
+    actions:
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: >-
+            {{ 'waterway_neo_high_temperature_warning'
+               if trigger.id == 'high'
+               else 'waterway_neo_freeze_risk_warning' }}

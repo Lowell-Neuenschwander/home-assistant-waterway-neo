@@ -35,6 +35,26 @@ template:
         state: >-
           {{ state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes')
              | float(9999) | abs <= 5 }}
+      - name: Waterway NEO High Temperature Warning
+        unique_id: waterway_neo_high_temperature_warning
+        device_class: problem
+        icon: mdi:thermometer-alert
+        availability: >-
+          {{ is_state('sensor.waterway_neo_controller', 'online') and
+             state_attr('sensor.waterway_neo_controller', 'water_temperature') is not none }}
+        state: >-
+          {{ state_attr('sensor.waterway_neo_controller', 'water_temperature')
+             | float(0) >= 110 }}
+      - name: Waterway NEO Freeze Risk Warning
+        unique_id: waterway_neo_freeze_risk_warning
+        device_class: problem
+        icon: mdi:snowflake-alert
+        availability: >-
+          {{ is_state('sensor.waterway_neo_controller', 'online') and
+             state_attr('sensor.waterway_neo_controller', 'water_temperature') is not none }}
+        state: >-
+          {{ state_attr('sensor.waterway_neo_controller', 'water_temperature')
+             | float(999) <= 60 }}
     sensor:
       - name: Waterway NEO Water Temperature
         unique_id: waterway_neo_water_temperature
@@ -62,6 +82,17 @@ input_boolean:
     name: Hot Tub Boost Active
     icon: mdi:timer-fire
 
+input_number:
+  hot_tub_requested_temperature:
+    name: Hot Tub Requested Temperature
+    icon: mdi:thermometer-water
+    initial: 99
+    min: 80
+    max: 104
+    step: 1
+    mode: box
+    unit_of_measurement: °F
+
 input_datetime:
   hot_tub_boost_end:
     name: Hot Tub Boost End
@@ -69,6 +100,17 @@ input_datetime:
     has_time: true
 
 script:
+  hot_tub_apply_requested_temperature:
+    alias: Hot Tub - Apply Requested Temperature
+    mode: restart
+    sequence:
+      - action: shell_command.waterway_neo_set_temperature
+        data:
+          temperature: "{{ states('input_number.hot_tub_requested_temperature') | int }}"
+      - delay: "00:00:05"
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.waterway_neo_controller
   hot_tub_boost_8_hours:
     alias: Hot Tub - Boost to 104°F for 8 Hours
     mode: restart
@@ -149,3 +191,67 @@ automation:
       - action: homeassistant.update_entity
         target:
           entity_id: sensor.waterway_neo_controller
+  - id: waterway_neo_high_temperature_warning
+    alias: Hot Tub - High Temperature Warning
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_high_temperature_warning
+        to: "on"
+      - trigger: time_pattern
+        minutes: "/15"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.waterway_neo_high_temperature_warning
+        state: "on"
+    actions:
+      - action: persistent_notification.create
+        data:
+          notification_id: waterway_neo_high_temperature_warning
+          title: Hot Tub High Temperature Warning
+          message: >-
+            Measured water temperature is
+            {{ states('sensor.waterway_neo_water_temperature') }}°F. Do not enter
+            the spa. Verify with an independent thermometer and shut down or
+            service the heater if confirmed.
+  - id: waterway_neo_freeze_risk_warning
+    alias: Hot Tub - Freeze Risk Warning
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_freeze_risk_warning
+        to: "on"
+      - trigger: time_pattern
+        hours: "/1"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.waterway_neo_freeze_risk_warning
+        state: "on"
+    actions:
+      - action: persistent_notification.create
+        data:
+          notification_id: waterway_neo_freeze_risk_warning
+          title: Hot Tub Freeze-Risk Warning
+          message: >-
+            Measured water temperature is
+            {{ states('sensor.waterway_neo_water_temperature') }}°F. Inspect the
+            heater, circulation, and power promptly to protect the plumbing.
+  - id: waterway_neo_clear_temperature_warnings
+    alias: Hot Tub - Clear Temperature Warnings
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_high_temperature_warning
+        to: "off"
+        id: high
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_freeze_risk_warning
+        to: "off"
+        id: freeze
+    actions:
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: >-
+            {{ 'waterway_neo_high_temperature_warning'
+               if trigger.id == 'high'
+               else 'waterway_neo_freeze_risk_warning' }}
