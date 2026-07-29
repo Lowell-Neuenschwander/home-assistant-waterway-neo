@@ -1,0 +1,12 @@
+{
+  "domain": "waterway_neo",
+  "name": "Waterway NEO",
+  "codeowners": ["@Lowell-Neuenschwander"],
+  "config_flow": true,
+  "documentation": "https://github.com/Lowell-Neuenschwander/home-assistant-waterway-neo",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Lowell-Neuenschwander/home-assistant-waterway-neo/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

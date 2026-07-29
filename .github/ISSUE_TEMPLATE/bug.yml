@@ -1,0 +1,37 @@
+name: Bug report
+description: Report a reproducible integration problem without sharing credentials
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Never include PubNub keys, controller channels, captures, MAC addresses,
+        public IP addresses, or Home Assistant storage files.
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration version
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Controller and panel firmware
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted logs or diagnostics
+      description: Confirm all credentials and unique identifiers are removed.

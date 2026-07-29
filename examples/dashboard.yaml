@@ -1,0 +1,19 @@
+type: vertical-stack
+cards:
+  - type: thermostat
+    entity: climate.waterway_neo
+    name: Hot Tub Target Temperature
+    show_current_as_primary: true
+  - type: entities
+    title: Hot Tub Safety and Status
+    entities:
+      - sensor.waterway_neo_water_temperature
+      - sensor.waterway_neo_target_temperature
+      - binary_sensor.waterway_neo_high_temperature_warning
+      - binary_sensor.waterway_neo_freeze_risk_warning
+      - binary_sensor.waterway_neo_controller_connection
+      - binary_sensor.waterway_neo_cloud_connection
+      - sensor.waterway_neo_controller_time
+      - sensor.waterway_neo_clock_drift
+      - binary_sensor.waterway_neo_clock_synchronized
+      - button.waterway_neo_synchronize_clock

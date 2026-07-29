@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Waterway NEO">
+  <rect width="256" height="256" rx="48" fill="#0b3954"/>
+  <path d="M34 155c22-22 44-22 66 0s44 22 66 0 44-22 66 0v37c-22-22-44-22-66 0s-44 22-66 0-44-22-66 0z" fill="#42c6e5"/>
+  <path d="M116 52a24 24 0 0 1 48 0v70a44 44 0 1 1-48 0zm24 19v71a20 20 0 1 0 0 36 20 20 0 0 0 0-36V71z" fill="#fff"/>
+  <circle cx="140" cy="161" r="13" fill="#ff7a45"/>
+</svg>
