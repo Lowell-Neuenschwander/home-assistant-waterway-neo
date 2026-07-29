@@ -87,9 +87,9 @@ services; a persistent-notification example is included in
 [`examples/automations.yaml`](examples/automations.yaml).
 
 The 110°F threshold is an emergency equipment-failure warning, not a safe-use
-limit. Public-health guidance says hot-tub water should not exceed 104°F. Verify
-the water with an independent thermometer before entry whenever a reading or
-controller behavior is abnormal.
+limit. [CDC hot-tub guidance](https://www.cdc.gov/healthy-swimming/safety/what-you-can-do-to-stay-healthy-in-hot-tubs.html)
+says water should not exceed 104°F. Verify the water with an independent
+thermometer before entry whenever a reading or controller behavior is abnormal.
 
 ## Eight-hour 104°F safeguard
 
