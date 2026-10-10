@@ -13,3 +13,7 @@ All notable changes to this project will be documented here.
 - Add optional automatic clock correction and five-minute default polling.
 - Add redacted diagnostics, examples, tests, CI validation, and a sanitized
   legacy package.
+- Keep local monitoring and cloud target control available independently.
+- Verify target-temperature commands and retry unconfirmed writes.
+- Add channel recovery diagnostics and a restart-safe setback watchdog example.
+- Start the eight-hour setback safeguard for every target above 99°F.

@@ -105,25 +105,64 @@ class Client:
         raise RuntimeError("timed out waiting for controller state")
 
     def status(self) -> dict[str, object]:
-        raw, other, water = self.read_local()
-        target, clock = self.read_cloud()
+        raw = ""
+        other = ""
+        water = None
+        local_available = True
+        local_error = ""
+        try:
+            raw, other, water = self.read_local()
+        except Exception as exc:
+            local_available = False
+            local_error = type(exc).__name__
+        target = None
+        clock = None
+        cloud_available = True
+        cloud_error = ""
+        try:
+            target, clock = self.read_cloud()
+        except Exception as exc:
+            cloud_available = False
+            cloud_error = type(exc).__name__
         drift = (
             round((clock - datetime.now(self.time_zone)).total_seconds() / 60, 1) if clock else None
         )
         return {
-            "status": "online" if raw.startswith("$G0,") else "invalid",
+            "status": ("online" if raw.startswith("$G0,") and raw.endswith("AA,55") else "invalid"),
+            "local_available": local_available,
+            "cloud_available": cloud_available,
             "water_temperature": water,
             "target_temperature": target,
             "controller_time": clock.isoformat() if clock else None,
             "clock_drift_minutes": drift,
             "raw_status": raw,
             "other_status": other,
+            "local_error": local_error,
+            "cloud_error": cloud_error,
         }
 
-    def set_temperature(self, temperature: int) -> None:
+    def set_temperature(self, temperature: int, attempts: int = 3) -> None:
         if not MIN_TEMP_F <= temperature <= MAX_TEMP_F:
             raise ValueError(f"temperature must be {MIN_TEMP_F}-{MAX_TEMP_F} F")
-        self.publish(f"$S3,0,{temperature:02X},!,AA,55")
+        command = f"$S3,0,{temperature:02X},!,AA,55"
+        for attempt in range(1, attempts + 1):
+            _, token = self.subscribe("0")
+            self.publish(command)
+            self.publish("$G7,0,!,AA,55")
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                messages, token = self.subscribe(token)
+                for message in messages:
+                    raw = str(message.get("OtherMsg", ""))
+                    fields = raw.split(",")
+                    if len(fields) < 3 or fields[0] not in ("$G7", "$A7"):
+                        continue
+                    candidate = fields[-4] if fields[0] == "$A7" else fields[2]
+                    if int(candidate, 16) == temperature:
+                        return
+            if attempt < attempts:
+                time.sleep(1)
+        raise RuntimeError(f"controller did not confirm target {temperature} F")
 
     def sync_time(self) -> None:
         now = datetime.now(self.time_zone)
@@ -153,7 +192,7 @@ def main() -> int:
         print(json.dumps(client.status()))
     elif args.command == "set":
         client.set_temperature(args.temperature)
-        print(json.dumps({"status": "sent", "temperature": args.temperature}))
+        print(json.dumps({"status": "confirmed", "temperature": args.temperature}))
     elif args.command == "sync-time":
         client.sync_time()
         print(json.dumps({"status": "sent"}))

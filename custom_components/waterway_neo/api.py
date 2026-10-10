@@ -40,11 +40,14 @@ class WaterwayNeoData:
     """Combined local and cloud state."""
 
     online: bool
+    local_available: bool
     water_temperature: int | None
     target_temperature: int | None
     controller_time: datetime | None
     clock_drift_minutes: float | None
     cloud_available: bool
+    local_error: str | None
+    cloud_error: str | None
     raw_status: str
     other_status: str
 
@@ -155,14 +158,25 @@ class WaterwayNeoClient:
     async def async_get_data(self) -> WaterwayNeoData:
         """Read the combined local and cloud state."""
 
-        local = await self.async_get_local_status()
+        local = LocalStatus(False, None, "", "")
+        local_available = True
+        local_error: str | None = None
+        try:
+            local = await self.async_get_local_status()
+            if not local.online:
+                local_error = "Controller returned an invalid local status"
+        except WaterwayNeoConnectionError as err:
+            local_available = False
+            local_error = str(err)
         target_temperature: int | None = None
         controller_time: datetime | None = None
         cloud_available = True
+        cloud_error: str | None = None
         try:
             target_temperature, controller_time = await self.async_read_cloud_state()
-        except WaterwayNeoCloudError:
+        except WaterwayNeoCloudError as err:
             cloud_available = False
+            cloud_error = str(err)
         drift: float | None = None
         if controller_time is not None:
             drift = round(
@@ -171,19 +185,40 @@ class WaterwayNeoClient:
             )
         return WaterwayNeoData(
             online=local.online,
+            local_available=local_available,
             water_temperature=local.water_temperature,
             target_temperature=target_temperature,
             controller_time=controller_time,
             clock_drift_minutes=drift,
             cloud_available=cloud_available,
+            local_error=local_error,
+            cloud_error=cloud_error,
             raw_status=local.raw_status,
             other_status=local.other_status,
         )
 
-    async def async_set_temperature(self, temperature: int) -> None:
-        """Set the controller target temperature."""
+    async def async_set_temperature(
+        self, temperature: int, *, attempts: int = 3, confirmation_timeout: int = 10
+    ) -> None:
+        """Set and verify the controller target temperature."""
 
-        await self._async_publish(build_set_temperature_command(temperature))
+        command = build_set_temperature_command(temperature)
+        for attempt in range(1, attempts + 1):
+            _, token = await self._async_subscribe("0")
+            await self._async_publish(command)
+            await self._async_publish("$G7,0,!,AA,55")
+            deadline = asyncio.get_running_loop().time() + confirmation_timeout
+            while asyncio.get_running_loop().time() < deadline:
+                messages, token = await self._async_subscribe(token)
+                for message in messages:
+                    confirmed, _ = parse_target_message(message)
+                    if confirmed == temperature:
+                        return
+            if attempt < attempts:
+                await asyncio.sleep(1)
+        raise WaterwayNeoCloudError(
+            f"Controller did not confirm target temperature {temperature} F"
+        )
 
     async def async_sync_time(self) -> datetime:
         """Set controller time and verify the echoed G2 response."""

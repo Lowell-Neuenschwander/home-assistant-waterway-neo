@@ -67,7 +67,6 @@ class WaterwayNeoClimate(WaterwayNeoEntity, ClimateEntity):
     def available(self) -> bool:
         return (
             super().available
-            and self.coordinator.data.online
             and self.coordinator.data.cloud_available
             and self.target_temperature is not None
         )

@@ -12,8 +12,12 @@ command_line:
         - target_temperature
         - controller_time
         - clock_drift_minutes
+        - local_available
+        - cloud_available
         - raw_status
         - other_status
+        - local_error
+        - cloud_error
         - error
 
 shell_command:
@@ -27,11 +31,17 @@ template:
         unique_id: waterway_neo_controller_online
         device_class: connectivity
         state: "{{ is_state('sensor.waterway_neo_controller', 'online') }}"
+      - name: Waterway NEO Cloud Available
+        unique_id: waterway_neo_cloud_available
+        device_class: connectivity
+        state: >-
+          {{ state_attr('sensor.waterway_neo_controller', 'cloud_available') | bool(false) }}
       - name: Waterway NEO Clock Synchronized
         unique_id: waterway_neo_clock_synchronized
         icon: mdi:clock-check-outline
         availability: >-
-          {{ state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes') is not none }}
+          {{ is_state('binary_sensor.waterway_neo_cloud_available', 'on') and
+             state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes') is not none }}
         state: >-
           {{ state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes')
              | float(9999) | abs <= 5 }}
@@ -61,20 +71,31 @@ template:
         device_class: temperature
         state_class: measurement
         unit_of_measurement: °F
+        availability: >-
+          {{ is_state('binary_sensor.waterway_neo_controller_online', 'on') }}
         state: "{{ state_attr('sensor.waterway_neo_controller', 'water_temperature') }}"
       - name: Waterway NEO Target Temperature
         unique_id: waterway_neo_target_temperature
         device_class: temperature
         unit_of_measurement: °F
+        availability: >-
+          {{ is_state('binary_sensor.waterway_neo_cloud_available', 'on') and
+             state_attr('sensor.waterway_neo_controller', 'target_temperature') is not none }}
         state: "{{ state_attr('sensor.waterway_neo_controller', 'target_temperature') }}"
       - name: Waterway NEO Controller Time
         unique_id: waterway_neo_controller_time
         device_class: timestamp
+        availability: >-
+          {{ is_state('binary_sensor.waterway_neo_cloud_available', 'on') and
+             state_attr('sensor.waterway_neo_controller', 'controller_time') is not none }}
         state: "{{ state_attr('sensor.waterway_neo_controller', 'controller_time') }}"
       - name: Waterway NEO Clock Drift
         unique_id: waterway_neo_clock_drift
         unit_of_measurement: min
         state_class: measurement
+        availability: >-
+          {{ is_state('binary_sensor.waterway_neo_cloud_available', 'on') and
+             state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes') is not none }}
         state: "{{ state_attr('sensor.waterway_neo_controller', 'clock_drift_minutes') }}"
 
 input_boolean:
@@ -86,7 +107,6 @@ input_number:
   hot_tub_requested_temperature:
     name: Hot Tub Requested Temperature
     icon: mdi:thermometer-water
-    initial: 99
     min: 80
     max: 104
     step: 1
@@ -139,12 +159,23 @@ script:
 
 automation:
   - id: waterway_neo_detect_104_boost
-    alias: Hot Tub - Detect 104°F Boost
+    alias: Hot Tub - Detect Target Above 99°F
+    mode: single
     triggers:
       - trigger: numeric_state
         entity_id: sensor.waterway_neo_target_temperature
-        above: 103.5
+        above: 99
+      - trigger: homeassistant
+        event: start
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_cloud_available
+        to: "on"
+      - trigger: time_pattern
+        minutes: "/5"
     conditions:
+      - condition: numeric_state
+        entity_id: sensor.waterway_neo_target_temperature
+        above: 99
       - condition: state
         entity_id: input_boolean.hot_tub_boost_active
         state: "off"
@@ -158,16 +189,81 @@ automation:
         data:
           datetime: "{{ (now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') }}"
   - id: waterway_neo_boost_deadline
-    alias: Hot Tub - Return to 99°F After Boost
+    alias: Hot Tub - Reconcile 99°F Setback After Elevated Target
+    mode: single
     triggers:
       - trigger: time
         at: input_datetime.hot_tub_boost_end
+        id: deadline
+      - trigger: time_pattern
+        minutes: "/5"
+        id: watchdog
+      - trigger: homeassistant
+        event: start
+        id: startup
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_cloud_available
+        to: "on"
+        id: recovered
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hot_tub_boost_active
+        state: "on"
+      - condition: template
+        value_template: >-
+          {% set deadline = as_timestamp(states('input_datetime.hot_tub_boost_end'), 0) %}
+          {{ deadline > 0 and deadline <= as_timestamp(now()) }}
+    actions:
+      - if:
+          - condition: template
+            value_template: >-
+              {{ states('sensor.waterway_neo_target_temperature') | float(200) > 99 }}
+        then:
+          - action: shell_command.waterway_neo_set_temperature
+            continue_on_error: true
+            data:
+              temperature: 99
+          - delay: "00:00:05"
+          - action: homeassistant.update_entity
+            target:
+              entity_id: sensor.waterway_neo_controller
+      - choose:
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.waterway_neo_target_temperature
+                below: 99.5
+            sequence:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.hot_tub_boost_active
+              - action: persistent_notification.dismiss
+                data:
+                  notification_id: waterway_neo_setback_failed
+        default:
+          - action: persistent_notification.create
+            data:
+              notification_id: waterway_neo_setback_failed
+              title: Hot Tub Setback Failed
+              message: >-
+                Home Assistant could not verify a target at or below 99°F. The
+                safeguard remains active and the five-minute watchdog will retry.
+  - id: waterway_neo_complete_safe_setback
+    alias: Hot Tub - Complete Safeguard When Already at Setback
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.waterway_neo_target_temperature
+        below: 99.5
     conditions:
       - condition: state
         entity_id: input_boolean.hot_tub_boost_active
         state: "on"
     actions:
-      - action: script.hot_tub_setback_now
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.hot_tub_boost_active
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: waterway_neo_setback_failed
   - id: waterway_neo_clock_sync
     alias: Hot Tub - Synchronize Controller Clock
     triggers:

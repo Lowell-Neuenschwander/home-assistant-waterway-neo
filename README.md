@@ -91,16 +91,30 @@ limit. [CDC hot-tub guidance](https://www.cdc.gov/healthy-swimming/safety/what-y
 says water should not exceed 104°F. Verify the water with an independent
 thermometer before entry whenever a reading or controller behavior is abnormal.
 
-## Eight-hour 104°F safeguard
+## Eight-hour elevated-target safeguard
 
 The integration deliberately exposes ordinary Home Assistant entities rather
-than silently imposing a household temperature schedule. A tested example that
-returns a 104°F target to 99°F after eight hours is provided in
+than silently imposing a household temperature schedule. An example that
+starts whenever the target rises above 99°F and returns it to no more than 99°F
+after eight hours is provided in
 [`examples/automations.yaml`](examples/automations.yaml). Review the entity IDs
 and temperatures before importing it.
 
+The example retains its deadline across Home Assistant restarts, checks it every
+five minutes, retries failed commands, and keeps the safeguard active until the
+controller reports a target at or below 99°F. Adjustments that remain above
+99°F do not reset or cancel the original eight-hour deadline. Lowering the
+target to 99°F or below completes the safeguard early; raising it again starts a
+new eight-hour window.
+
 Because the default polling interval is five minutes, a target selected in the
 Waterway app can take up to five minutes to appear in Home Assistant.
+
+Local water-temperature monitoring and cloud target control are tracked
+independently. A local controller outage does not disable cloud target control,
+and a cloud outage does not hide a valid local water-temperature reading.
+Setpoint writes are reported as successful only after the controller confirms
+the requested target.
 
 ## Legacy package
 
