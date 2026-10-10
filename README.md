@@ -91,19 +91,21 @@ limit. [CDC hot-tub guidance](https://www.cdc.gov/healthy-swimming/safety/what-y
 says water should not exceed 104°F. Verify the water with an independent
 thermometer before entry whenever a reading or controller behavior is abnormal.
 
-## Eight-hour 104°F safeguard
+## Eight-hour elevated-target safeguard
 
 The integration deliberately exposes ordinary Home Assistant entities rather
 than silently imposing a household temperature schedule. An example that
-returns a 104°F target to no more than 99°F after eight hours is provided in
+starts whenever the target rises above 99°F and returns it to no more than 99°F
+after eight hours is provided in
 [`examples/automations.yaml`](examples/automations.yaml). Review the entity IDs
 and temperatures before importing it.
 
 The example retains its deadline across Home Assistant restarts, checks it every
-five minutes, retries failed commands, and keeps the boost active until the
-controller reports a target at or below 99°F. Lowering the target to 99°F or
-below completes the safeguard early; an intermediate target such as 100°F does
-not silently cancel the deadline.
+five minutes, retries failed commands, and keeps the safeguard active until the
+controller reports a target at or below 99°F. Adjustments that remain above
+99°F do not reset or cancel the original eight-hour deadline. Lowering the
+target to 99°F or below completes the safeguard early; raising it again starts a
+new eight-hour window.
 
 Because the default polling interval is five minutes, a target selected in the
 Waterway app can take up to five minutes to appear in Home Assistant.

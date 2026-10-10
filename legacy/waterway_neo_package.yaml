@@ -159,12 +159,23 @@ script:
 
 automation:
   - id: waterway_neo_detect_104_boost
-    alias: Hot Tub - Detect 104°F Boost
+    alias: Hot Tub - Detect Target Above 99°F
+    mode: single
     triggers:
       - trigger: numeric_state
         entity_id: sensor.waterway_neo_target_temperature
-        above: 103.5
+        above: 99
+      - trigger: homeassistant
+        event: start
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_cloud_available
+        to: "on"
+      - trigger: time_pattern
+        minutes: "/5"
     conditions:
+      - condition: numeric_state
+        entity_id: sensor.waterway_neo_target_temperature
+        above: 99
       - condition: state
         entity_id: input_boolean.hot_tub_boost_active
         state: "off"
@@ -178,7 +189,7 @@ automation:
         data:
           datetime: "{{ (now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') }}"
   - id: waterway_neo_boost_deadline
-    alias: Hot Tub - Reconcile 99°F Setback After Boost
+    alias: Hot Tub - Reconcile 99°F Setback After Elevated Target
     mode: single
     triggers:
       - trigger: time
@@ -235,9 +246,9 @@ automation:
               title: Hot Tub Setback Failed
               message: >-
                 Home Assistant could not verify a target at or below 99°F. The
-                boost remains active and the five-minute watchdog will retry.
+                safeguard remains active and the five-minute watchdog will retry.
   - id: waterway_neo_complete_safe_setback
-    alias: Hot Tub - Complete Boost When Already at Setback
+    alias: Hot Tub - Complete Safeguard When Already at Setback
     triggers:
       - trigger: numeric_state
         entity_id: sensor.waterway_neo_target_temperature
