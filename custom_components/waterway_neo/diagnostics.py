@@ -25,4 +25,8 @@ async def async_get_config_entry_diagnostics(
         "config_entry": async_redact_data(dict(entry.data), TO_REDACT),
         "data": asdict(coordinator.data),
         "last_update_success": coordinator.last_update_success,
+        "local_consecutive_failures": coordinator.local_consecutive_failures,
+        "cloud_consecutive_failures": coordinator.cloud_consecutive_failures,
+        "last_local_success": coordinator.last_local_success,
+        "last_cloud_success": coordinator.last_cloud_success,
     }

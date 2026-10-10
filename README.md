@@ -94,13 +94,25 @@ thermometer before entry whenever a reading or controller behavior is abnormal.
 ## Eight-hour 104°F safeguard
 
 The integration deliberately exposes ordinary Home Assistant entities rather
-than silently imposing a household temperature schedule. A tested example that
-returns a 104°F target to 99°F after eight hours is provided in
+than silently imposing a household temperature schedule. An example that
+returns a 104°F target to no more than 99°F after eight hours is provided in
 [`examples/automations.yaml`](examples/automations.yaml). Review the entity IDs
 and temperatures before importing it.
 
+The example retains its deadline across Home Assistant restarts, checks it every
+five minutes, retries failed commands, and keeps the boost active until the
+controller reports a target at or below 99°F. Lowering the target to 99°F or
+below completes the safeguard early; an intermediate target such as 100°F does
+not silently cancel the deadline.
+
 Because the default polling interval is five minutes, a target selected in the
 Waterway app can take up to five minutes to appear in Home Assistant.
+
+Local water-temperature monitoring and cloud target control are tracked
+independently. A local controller outage does not disable cloud target control,
+and a cloud outage does not hide a valid local water-temperature reading.
+Setpoint writes are reported as successful only after the controller confirms
+the requested target.
 
 ## Legacy package
 

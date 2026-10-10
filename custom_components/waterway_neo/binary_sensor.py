@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -44,6 +46,14 @@ class WaterwayNeoOnlineBinarySensor(WaterwayNeoEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         return self.coordinator.data.online
 
+    @property
+    def extra_state_attributes(self) -> dict[str, int | str | None]:
+        return {
+            "consecutive_failures": self.coordinator.local_consecutive_failures,
+            "last_success": _isoformat(self.coordinator.last_local_success),
+            "error": self.coordinator.data.local_error,
+        }
+
 
 class WaterwayNeoCloudBinarySensor(WaterwayNeoEntity, BinarySensorEntity):
     """Controller cloud-channel connectivity."""
@@ -58,6 +68,20 @@ class WaterwayNeoCloudBinarySensor(WaterwayNeoEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         return self.coordinator.data.cloud_available
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int | str | None]:
+        return {
+            "consecutive_failures": self.coordinator.cloud_consecutive_failures,
+            "last_success": _isoformat(self.coordinator.last_cloud_success),
+            "error": self.coordinator.data.cloud_error,
+        }
+
+
+def _isoformat(value: datetime | None) -> str | None:
+    """Return an ISO timestamp suitable for an entity attribute."""
+
+    return value.isoformat() if value is not None else None
 
 
 class WaterwayNeoClockBinarySensor(WaterwayNeoEntity, BinarySensorEntity):

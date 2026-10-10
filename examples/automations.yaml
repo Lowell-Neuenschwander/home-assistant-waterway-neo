@@ -31,24 +31,89 @@ automation:
         data:
           datetime: "{{ (now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') }}"
 
-  - alias: Hot Tub - Return to 99°F After Boost
-    id: waterway_neo_return_to_setback
+  - alias: Hot Tub - Reconcile 99°F Setback After Boost
+    id: waterway_neo_reconcile_setback
+    mode: single
     triggers:
       - trigger: time
         at: input_datetime.hot_tub_boost_end
+        id: deadline
+      - trigger: time_pattern
+        minutes: "/5"
+        id: watchdog
+      - trigger: homeassistant
+        event: start
+        id: startup
+      - trigger: state
+        entity_id: binary_sensor.waterway_neo_cloud_connection
+        to: "on"
+        id: recovered
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hot_tub_boost_active
+        state: "on"
+      - condition: template
+        value_template: >-
+          {% set deadline = as_timestamp(states('input_datetime.hot_tub_boost_end'), 0) %}
+          {{ deadline > 0 and deadline <= as_timestamp(now()) }}
+    actions:
+      - repeat:
+          count: 3
+          sequence:
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ state_attr('climate.waterway_neo', 'temperature') | float(200) > 99 }}
+              then:
+                - action: climate.set_temperature
+                  target:
+                    entity_id: climate.waterway_neo
+                  data:
+                    temperature: 99
+                - delay: "00:00:15"
+                - action: homeassistant.update_entity
+                  target:
+                    entity_id: climate.waterway_neo
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ state_attr('climate.waterway_neo', 'temperature') | float(200) <= 99 }}
+            sequence:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.hot_tub_boost_active
+              - action: persistent_notification.dismiss
+                data:
+                  notification_id: waterway_neo_setback_failed
+        default:
+          - action: persistent_notification.create
+            data:
+              notification_id: waterway_neo_setback_failed
+              title: Hot Tub Setback Failed
+              message: >-
+                Home Assistant could not verify a target at or below 99°F after
+                three attempts. The boost remains active and the watchdog will retry.
+
+  - alias: Hot Tub - Complete Boost When Already at Setback
+    id: waterway_neo_complete_safe_setback
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: climate.waterway_neo
+        attribute: temperature
+        below: 99.5
     conditions:
       - condition: state
         entity_id: input_boolean.hot_tub_boost_active
         state: "on"
     actions:
-      - action: climate.set_temperature
-        target:
-          entity_id: climate.waterway_neo
-        data:
-          temperature: 99
       - action: input_boolean.turn_off
         target:
           entity_id: input_boolean.hot_tub_boost_active
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: waterway_neo_setback_failed
 
   - alias: Hot Tub - High Temperature Warning
     id: waterway_neo_high_temperature_warning
